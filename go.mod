@@ -12,7 +12,7 @@ require (
 	cosmossdk.io/math v1.5.3
 	cosmossdk.io/store v1.1.2
 	cosmossdk.io/tools/confix v0.1.2
-	cosmossdk.io/x/evidence v0.1.1
+	cosmossdk.io/x/evidence v0.2.0
 	cosmossdk.io/x/feegrant v0.1.1
 	cosmossdk.io/x/tx v0.14.0
 	cosmossdk.io/x/upgrade v0.2.0
@@ -86,7 +86,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/bgentry/speakeasy v0.2.0 // indirect
-	github.com/bits-and-blooms/bitset v1.17.0 // indirect
+	github.com/bits-and-blooms/bitset v1.22.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.4 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
 	github.com/bytedance/sonic v1.13.2 // indirect
