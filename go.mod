@@ -1,6 +1,6 @@
 module github.com/evmos/ethermint
 
-go 1.23.10
+go 1.25.0
 
 require (
 	cosmossdk.io/api v0.9.2
@@ -49,7 +49,7 @@ require (
 	github.com/tidwall/sjson v1.2.5
 	github.com/tyler-smith/go-bip39 v1.1.0
 	golang.org/x/net v0.42.0
-	golang.org/x/sync v0.16.0
+	golang.org/x/sync v0.20.0
 	golang.org/x/text v0.27.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20250528174236-200df99c418a
 	google.golang.org/grpc v1.74.2
