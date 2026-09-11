@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	sdkmath "cosmossdk.io/math"
 	"github.com/evmos/ethermint/testutil"
 	"github.com/evmos/ethermint/x/feemarket/types"
 	"github.com/stretchr/testify/suite"
@@ -79,4 +80,22 @@ func (suite *ParamsTestSuite) TestSetGetParams() {
 			suite.Require().Equal(tc.expected, outcome)
 		})
 	}
+}
+
+func (suite *ParamsTestSuite) TestApplyLegacySubspaceChanges() {
+	params := types.DefaultParams()
+	params.MinGasPrice = sdkmath.LegacyNewDec(1)
+	params.ElasticityMultiplier = 4
+	suite.Require().NoError(suite.App.FeeMarketKeeper.SetParams(suite.Ctx, params))
+
+	newPrice := sdkmath.LegacyNewDec(99)
+	ss := suite.App.GetSubspace(types.ModuleName)
+	ss.Set(suite.Ctx, types.ParamStoreKeyMinGasPrice, newPrice)
+
+	err := suite.App.FeeMarketKeeper.ApplyLegacySubspaceChanges(suite.Ctx, []string{string(types.ParamStoreKeyMinGasPrice)})
+	suite.Require().NoError(err)
+
+	got := suite.App.FeeMarketKeeper.GetParams(suite.Ctx)
+	suite.Require().True(got.MinGasPrice.Equal(newPrice), "min gas price should come from the subspace change")
+	suite.Require().Equal(uint32(4), got.ElasticityMultiplier, "unrelated module-store params must be preserved")
 }
