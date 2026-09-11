@@ -90,7 +90,7 @@ func (suite *BackendTestSuite) TestGetTransactionByHash() {
 			},
 			msgEthereumTx,
 			nil,
-			true,
+			false,
 		},
 		{
 			"pass - Base fee error",
@@ -994,7 +994,7 @@ func (suite *BackendTestSuite) TestGetTransactionReceipt_BlockScopedWhenIndexerO
 
 // TestGetTransactionReceipt_BlockScopedWhenBlockResultsFetchFails verifies that
 // when rebuilding receipt data from a block-scoped query and fetching block
-// results fails, the call returns nil without error.
+// results fails, the call returns an error instead of a silent null.
 func (suite *BackendTestSuite) TestGetTransactionReceipt_BlockScopedWhenBlockResultsFetchFails() {
 	_, txHash, block1, _ := suite.indexSameTxInTwoBlocks()
 
@@ -1003,7 +1003,7 @@ func (suite *BackendTestSuite) TestGetTransactionReceipt_BlockScopedWhenBlockRes
 	RegisterBlockResultsError(client, 1)
 
 	receipt, err := suite.backend.GetTransactionReceipt(txHash, resBlock1)
-	suite.Require().NoError(err)
+	suite.Require().Error(err)
 	suite.Require().Nil(receipt)
 }
 

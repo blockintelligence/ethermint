@@ -71,7 +71,7 @@ func (b *Backend) GetTransactionByHash(txHash common.Hash) (*rpctypes.RPCTransac
 	blockRes, err := b.TendermintBlockResultByNumber(&block.Block.Height)
 	if err != nil {
 		b.logger.Debug("block result not found", "height", block.Block.Height, "error", err.Error())
-		return nil, nil
+		return nil, err
 	}
 
 	if res.EthTxIndex == -1 {
@@ -236,7 +236,7 @@ func (b *Backend) GetTransactionReceipt(hash common.Hash, block *tmrpctypes.Resu
 	blockResults, err := b.TendermintBlockResultByNumber(&block.Block.Height)
 	if err != nil {
 		b.logger.Debug("failed to retrieve block results", "height", block.Block.Height, "error", err.Error())
-		return nil, nil
+		return nil, err
 	}
 
 	receipt, err := b.buildReceiptFromBlock(block, blockResults, hash)
@@ -265,12 +265,12 @@ func (b *Backend) getTransactionReceiptByIndexer(hash common.Hash) (map[string]i
 	block, err := b.TendermintBlockByNumber(rpctypes.BlockNumber(res.Height))
 	if err != nil {
 		b.logger.Debug("block not found", "height", res.Height, "error", err.Error())
-		return nil, nil
+		return nil, err
 	}
 	blockResults, err := b.TendermintBlockResultByNumber(&res.Height)
 	if err != nil {
 		b.logger.Debug("failed to retrieve block results", "height", res.Height, "error", err.Error())
-		return nil, nil
+		return nil, err
 	}
 	receipt, err := b.buildReceiptFromBlock(block, blockResults, hash)
 	if err != nil {

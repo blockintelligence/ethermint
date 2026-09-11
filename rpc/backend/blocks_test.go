@@ -107,7 +107,7 @@ func (suite *BackendTestSuite) TestGetBlockByNumber() {
 		expPass      bool
 	}{
 		{
-			"pass - tendermint block not found",
+			"fail - tendermint block fetch error",
 			ethrpc.BlockNumber(1),
 			true,
 			sdkmath.NewInt(1).BigInt(),
@@ -119,8 +119,8 @@ func (suite *BackendTestSuite) TestGetBlockByNumber() {
 				client := suite.backend.clientCtx.Client.(*mocks.Client)
 				RegisterBlockError(client, height)
 			},
-			true,
-			true,
+			false,
+			false,
 		},
 		{
 			"pass - block not found (e.g. request block height that is greater than current one)",
