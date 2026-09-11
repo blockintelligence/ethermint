@@ -125,3 +125,21 @@ func (suite *EIP1559TestSuite) TestCalculateBaseFee() {
 		})
 	}
 }
+
+func (suite *EIP1559TestSuite) TestCalculateBaseFeeMaxGasZero() {
+	suite.SetupTest()
+
+	params := suite.App.FeeMarketKeeper.GetParams(suite.Ctx)
+	err := suite.App.FeeMarketKeeper.SetParams(suite.Ctx, params)
+	suite.Require().NoError(err)
+
+	suite.Ctx = suite.Ctx.WithBlockHeight(1)
+	suite.App.FeeMarketKeeper.SetBlockGasWanted(suite.Ctx, 100)
+	suite.Ctx = suite.Ctx.WithConsensusParams(tmproto.ConsensusParams{
+		Block: &tmproto.BlockParams{MaxGas: 0, MaxBytes: 10},
+	})
+
+	fee := suite.App.FeeMarketKeeper.CalculateBaseFee(suite.Ctx)
+	suite.Require().NotNil(fee)
+	suite.Require().Equal(params.BaseFee, sdkmath.NewIntFromBigInt(fee))
+}
