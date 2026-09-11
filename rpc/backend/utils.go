@@ -248,17 +248,27 @@ func (b *Backend) processBlock(
 		if err != nil {
 			return err
 		}
-		for _, msg := range tx.GetMsgs() {
+		parsed, parseErr := types.ParseTxResult(eachTendermintTxResult, tx)
+		if parseErr != nil {
+			b.logger.Debug("failed to parse tx events for fee history", "height", blockHeight, "error", parseErr.Error())
+		}
+		for msgIndex, msg := range tx.GetMsgs() {
 			ethMsg, ok := msg.(*evmtypes.MsgEthereumTx)
 			if !ok {
 				continue
 			}
-			tx := ethMsg.AsTransaction()
-			reward, err := tx.EffectiveGasTip(blockBaseFee)
+			gasUsed := txGasUsed
+			if parseErr == nil && parsed != nil {
+				if parsedTx := parsed.GetTxByMsgIndex(msgIndex); parsedTx != nil {
+					gasUsed = parsedTx.GasUsed
+				}
+			}
+			ethTx := ethMsg.AsTransaction()
+			reward, err := ethTx.EffectiveGasTip(blockBaseFee)
 			if err != nil || reward == nil {
 				reward = big.NewInt(0)
 			}
-			sorter = append(sorter, txGasAndReward{gasUsed: txGasUsed, reward: reward})
+			sorter = append(sorter, txGasAndReward{gasUsed: gasUsed, reward: reward})
 		}
 	}
 
