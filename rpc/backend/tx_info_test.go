@@ -955,6 +955,61 @@ func (suite *BackendTestSuite) TestGetTransactionReceipt_IgnoresInterleavedCosmo
 	suite.Require().Equal(receiptByHash["cumulativeGasUsed"], blockReceipts[1]["cumulativeGasUsed"])
 }
 
+func (suite *BackendTestSuite) TestRPCBlockFromTendermintBlock_IgnoresInterleavedCosmosTxGas() {
+	bankTxBuilder := suite.backend.clientCtx.TxConfig.NewTxBuilder()
+	err := bankTxBuilder.SetMsgs(&banktypes.MsgSend{
+		FromAddress: suite.acc.String(),
+		ToAddress:   sdk.AccAddress(make([]byte, 20)).String(),
+		Amount:      sdk.NewCoins(sdk.NewInt64Coin("aphoton", 1)),
+	})
+	suite.Require().NoError(err)
+	bankTxBz, err := suite.backend.clientCtx.TxConfig.TxEncoder()(bankTxBuilder.GetTx())
+	suite.Require().NoError(err)
+
+	firstEthMsg, firstEthTxBz := suite.buildEthereumTxWithNonceAndGas(0, 100000)
+	secondEthMsg, secondEthTxBz := suite.buildEthereumTxWithNonceAndGas(1, 100000)
+	blockTxs := []types.Tx{firstEthTxBz, bankTxBz, secondEthTxBz}
+	resBlock := &tmrpctypes.ResultBlock{Block: types.MakeBlock(1, blockTxs, nil, nil)}
+	blockResults := &tmrpctypes.ResultBlockResults{
+		Height: 1,
+		TxsResults: []*abci.ExecTxResult{
+			{
+				Code:    0,
+				GasUsed: 21000,
+				Events: []abci.Event{{
+					Type: evmtypes.EventTypeEthereumTx,
+					Attributes: []abci.EventAttribute{
+						{Key: evmtypes.AttributeKeyEthereumTxHash, Value: firstEthMsg.Hash().Hex()},
+						{Key: evmtypes.AttributeKeyTxIndex, Value: "0"},
+					},
+				}},
+			},
+			{Code: 0, GasUsed: 50000},
+			{
+				Code:    0,
+				GasUsed: 30000,
+				Events: []abci.Event{{
+					Type: evmtypes.EventTypeEthereumTx,
+					Attributes: []abci.EventAttribute{
+						{Key: evmtypes.AttributeKeyEthereumTxHash, Value: secondEthMsg.Hash().Hex()},
+						{Key: evmtypes.AttributeKeyTxIndex, Value: "1"},
+					},
+				}},
+			},
+		},
+	}
+
+	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+	RegisterBaseFee(queryClient, sdkmath.NewInt(1))
+	RegisterValidatorAccount(queryClient, suite.acc)
+	client := suite.backend.clientCtx.Client.(*mocks.Client)
+	RegisterConsensusParams(client, 1)
+
+	block, err := suite.backend.RPCBlockFromTendermintBlock(resBlock, blockResults, false)
+	suite.Require().NoError(err)
+	suite.Require().Equal(hexutil.Uint64(51000), block["gasUsed"])
+}
+
 // TestGetTransactionReceipt_BlockScopedWhenIndexerOverwritten verifies that when
 // the KV indexer has been overwritten to point a tx hash at a later block,
 // block-scoped receipt queries still rebuild the receipt from the requested

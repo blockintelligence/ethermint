@@ -654,7 +654,7 @@ func (b *Backend) RPCBlockFromTendermintBlock(
 		b.logger.Error("failed to query consensus params", "error", err.Error())
 	}
 
-	gasUsed, err := computeGasUsed(blockRes)
+	gasUsed, err := b.evmBlockGasUsed(resBlock, blockRes)
 	if err != nil {
 		return nil, err
 	}
