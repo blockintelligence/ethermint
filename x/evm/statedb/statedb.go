@@ -743,26 +743,14 @@ func (s *StateDB) ClearError() {
 	s.err = nil
 }
 
-// Commit writes the dirty states to keeper
-// the StateDB object should be discarded after committed.
-func (s *StateDB) Commit() error {
-	if s.committed {
-		return errors.New("statedb already committed")
-	}
-	s.committed = true
-	// if there's any errors during the execution, abort
-	if s.err != nil {
-		return s.err
-	}
+// DetectStateConflict reports overlapping EVM-dirty vs native-module storage
+// writes without committing. Query paths (eth_call, eth_estimateGas) use this
+// so they fail the same way as block execution.
+func (s *StateDB) DetectStateConflict() error {
+	return s.nativeStorageConflict()
+}
 
-	// Enforce the non-overlap invariant BEFORE flushing the native cache store.
-	// A nested native action (via ExecuteNativeAction) commits its writes into s.cacheMS
-	// (readable via s.ctx). If any EVM-dirty key was also written by such an action, the
-	// store value visible through s.ctx will differ from originStorage. Detecting this
-	// before flushing means we can abort cleanly — the parent context is never touched.
-	//
-	// Note: only EVM-dirty keys are checked; native-only writes have no EVM dirty bit
-	// and are not in scope.
+func (s *StateDB) nativeStorageConflict() error {
 	for _, addr := range s.journal.sortedDirties() {
 		obj, exist := s.stateObjects[addr]
 		if !exist || obj.selfDestructed {
@@ -785,6 +773,32 @@ func (s *StateDB) Commit() error {
 				)
 			}
 		}
+	}
+	return nil
+}
+
+// Commit writes the dirty states to keeper
+// the StateDB object should be discarded after committed.
+func (s *StateDB) Commit() error {
+	if s.committed {
+		return errors.New("statedb already committed")
+	}
+	s.committed = true
+	// if there's any errors during the execution, abort
+	if s.err != nil {
+		return s.err
+	}
+
+	// Enforce the non-overlap invariant BEFORE flushing the native cache store.
+	// A nested native action (via ExecuteNativeAction) commits its writes into s.cacheMS
+	// (readable via s.ctx). If any EVM-dirty key was also written by such an action, the
+	// store value visible through s.ctx will differ from originStorage. Detecting this
+	// before flushing means we can abort cleanly — the parent context is never touched.
+	//
+	// Note: only EVM-dirty keys are checked; native-only writes have no EVM dirty bit
+	// and are not in scope.
+	if err := s.nativeStorageConflict(); err != nil {
+		return err
 	}
 
 	s.flushNativeCacheLayers()
