@@ -1228,6 +1228,58 @@ func (suite *StateTransitionTestSuite) requireSetCodeAuthorizationConsumed(
 	suite.Require().Equal(ethtypes.AddressToDelegation(delegate), vmdb.GetCode(authority))
 }
 
+type logAppendHook struct {
+	addr common.Address
+}
+
+func (h *logAppendHook) PostTxProcessing(_ sdk.Context, _ *core.Message, receipt *ethtypes.Receipt) error {
+	receipt.Logs = append(receipt.Logs, &ethtypes.Log{
+		Address: h.addr,
+		Topics:  []common.Hash{common.HexToHash("0x01")},
+	})
+	return nil
+}
+
+func (suite *StateTransitionTestSuite) TestTxBloomIncludesPostHookLogs() {
+	suite.SetupTest()
+	hookAddr := common.HexToAddress("0x000000000000000000000000000000000000b10b")
+	suite.App.EvmKeeper.SetHooks(keeper.NewMultiEvmHooks(&logAppendHook{addr: hookAddr}))
+
+	signer := ethtypes.LatestSignerForChainID(suite.App.EvmKeeper.ChainID())
+	vmdb := suite.StateDB()
+	msg, _, err := newEthMsgTx(
+		vmdb.GetNonce(suite.Address),
+		suite.Address,
+		suite.Signer,
+		signer,
+		ethtypes.AccessListTxType,
+		nil,
+		nil,
+	)
+	suite.Require().NoError(err)
+
+	res, err := suite.App.EvmKeeper.EthereumTx(suite.Ctx, msg)
+	suite.Require().NoError(err)
+	suite.Require().False(res.Failed())
+	suite.Require().Len(res.Logs, 1)
+	suite.Require().Equal(hookAddr.Hex(), res.Logs[0].Address)
+
+	suite.App.EvmKeeper.CollectTxBloom(suite.Ctx)
+	found := false
+	for _, evt := range suite.Ctx.EventManager().Events() {
+		if evt.Type != types.EventTypeBlockBloom {
+			continue
+		}
+		for _, attr := range evt.Attributes {
+			if attr.Key == types.AttributeKeyEthereumBloom {
+				bloom := ethtypes.BytesToBloom([]byte(attr.Value))
+				found = bloom.Test(hookAddr.Bytes())
+			}
+		}
+	}
+	suite.Require().True(found, "block bloom should include address from post-tx hook logs")
+}
+
 type oneShotFailureHook struct {
 	called bool
 }

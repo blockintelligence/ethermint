@@ -198,18 +198,6 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, msgEth *types.MsgEthereumTx) 
 
 	logs := types.LogsToEthereum(res.Logs)
 
-	// Compute block bloom filter
-	if len(logs) > 0 {
-		bloom := ethtypes.Bloom{}
-		for _, log := range logs {
-			bloom.Add(log.Address.Bytes())
-			for _, topic := range log.Topics {
-				bloom.Add(topic[:])
-			}
-		}
-		k.SetTxBloom(tmpCtx, bloom.Big())
-	}
-
 	var contractAddr common.Address
 	if msg.To == nil {
 		contractAddr = crypto.CreateAddress(msg.From, msg.Nonce)
@@ -244,6 +232,10 @@ func (k *Keeper) ApplyTransaction(ctx sdk.Context, msgEth *types.MsgEthereumTx) 
 			res.Logs = types.NewLogsFromEth(receipt.Logs)
 		}
 	}
+
+	// Bloom is derived from the final logs so post-tx hooks that add, remove, or
+	// rewrite receipt.Logs are reflected in eth_getLogs bloom filtering.
+	k.setTxBloomFromLogs(ctx, types.LogsToEthereum(res.Logs))
 
 	// Get the tracer and add OnGasChange hook for gas refund
 	leftoverGas := msg.GasLimit - res.GasUsed
