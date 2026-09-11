@@ -44,6 +44,7 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Improvements
 
+* (docs) document Block Intelligence as the current Ethermint maintainer and add custom-chain contact links.
 * (rpc) [#1010](https://github.com/crypto-org-chain/ethermint/pull/1010) test(rpc): validate JSON-RPC schema against ethereum/execution-apis fixtures.
 * (rpc) [#992](https://github.com/crypto-org-chain/ethermint/pull/992) test(rpc): improve test coverage for GetTransactionByBlock* methods.
 * (rpc) [#996](https://github.com/crypto-org-chain/ethermint/pull/996) refactor(rpc): fix type consistency in `buildReceiptDirect` and `GetTransactionByBlockHashAndIndex`.

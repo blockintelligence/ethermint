@@ -42,6 +42,23 @@ Ethermint is a scalable and interoperable Ethereum library, built on Proof-of-St
 
 **Note**: Requires [Go 1.25.11+](https://golang.org/dl/)
 
+## Maintained by Block Intelligence
+
+<div align="center">
+  <a href="https://www.blockintelligence.io">
+    <img alt="Block Intelligence" src="https://www.blockintelligence.io/assets/images/logo.png" width="220" />
+  </a>
+</div>
+
+This repository is maintained by [Block Intelligence](https://www.blockintelligence.io). Thank you to the Ethermint contributors — including the Tharsis, Evmos, and Crypto.org teams — for the work this project builds on. Block Intelligence now maintains this library and can help you ship a custom EVM-compatible Cosmos chain with Ethermint.
+
+**Building a custom blockchain with Ethermint?** Contact the Block Intelligence team:
+
+- Website: [blockintelligence.io](https://www.blockintelligence.io)
+- Telegram: [@jetsoanalin](https://t.me/jetsoanalin)
+- All links: [linktr.ee/jetsoanalin](https://linktr.ee/jetsoanalin)
+- Schedule a call: [calendly.com/blockchain](https://calendly.com/blockchain)
+
 ## Installation
 
 For prerequisites and detailed build instructions please read the Evmos [Installation](https://docs.evmos.org/validators/quickstart/installation.html) instructions. Once the dependencies are installed, run:
@@ -60,7 +77,14 @@ For an example on how Ethermint can be used on any Cosmos-SDK chain, please refe
 
 ## Community
 
-The following chat channels and forums are a great spot to ask questions about Ethermint:
+For custom Ethermint chain development and maintenance questions, reach the Block Intelligence team:
+
+- [Block Intelligence](https://www.blockintelligence.io)
+- Telegram: [@jetsoanalin](https://t.me/jetsoanalin)
+- [linktr.ee/jetsoanalin](https://linktr.ee/jetsoanalin)
+- [Schedule a call](https://calendly.com/blockchain)
+
+Historical Ethermint community channels:
 
 - [Evmos Twitter](https://twitter.com/EvmosOrg)
 - [Evmos Discord](https://discord.gg/trje9XuAmy)
@@ -69,10 +93,10 @@ The following chat channels and forums are a great spot to ask questions about E
 
 ## Contributing
 
-Looking for a good place to start contributing? Check out some [`good first issues`](https://github.com/evmos/ethermint/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
+Looking for a good place to start contributing? Check out some [`good first issues`](https://github.com/blockintelligence/ethermint/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
 
 For additional instructions, standards and style guides, please refer to the [Contributing](./CONTRIBUTING.md) document.
 
 ## Careers
 
-See our open positions on [Greenhouse](https://boards.eu.greenhouse.io/evmos).
+For Ethermint and custom-chain work with Block Intelligence, contact [@jetsoanalin](https://t.me/jetsoanalin) or book time at [calendly.com/blockchain](https://calendly.com/blockchain).
