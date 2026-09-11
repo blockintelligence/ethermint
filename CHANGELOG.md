@@ -50,6 +50,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Bug Fixes
 
+* (feemarket) fix(feemarket): validate MinGasMultiplier with its own param validator.
+
 * (ante) fix(ante): validate EIP-712 signers and sequence on RecheckTx.
 
 * (rpc) fix(rpc): use per-message gas in eth_feeHistory instead of the whole Cosmos tx gas.

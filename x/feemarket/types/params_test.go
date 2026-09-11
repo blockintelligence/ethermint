@@ -117,3 +117,21 @@ func (suite *ParamsTestSuite) TestParamsValidateMinGasPrice() {
 		}
 	}
 }
+
+func (suite *ParamsTestSuite) TestParamSetPairsMinGasMultiplier() {
+	params := DefaultParams()
+	var validator func(interface{}) error
+	for _, pair := range params.ParamSetPairs() {
+		if string(pair.Key) == string(ParamStoreKeyMinGasMultiplier) {
+			validator = pair.ValidatorFn
+			break
+		}
+	}
+	suite.Require().NotNil(validator, "MinGasMultiplier ParamSetPair must be registered")
+
+	suite.Require().NoError(validator(DefaultMinGasMultiplier))
+	suite.Require().NoError(validator(sdkmath.LegacyZeroDec()))
+	// validateMinGasPrice would accept values > 1; the multiplier must not.
+	suite.Require().Error(validator(sdkmath.LegacyNewDec(2)))
+	suite.Require().Error(validator(sdkmath.LegacyNewDec(-1)))
+}
