@@ -310,6 +310,22 @@ func computeGasUsed(blockRes *tmrpctypes.ResultBlockResults) (uint64, error) {
 	return gasUsed, nil
 }
 
+// evmBlockGasUsed returns the gas consumed by Ethereum messages in the block,
+// excluding Cosmos-only transactions so the header matches receipt totals.
+func (b *Backend) evmBlockGasUsed(
+	resBlock *tmrpctypes.ResultBlock,
+	blockRes *tmrpctypes.ResultBlockResults,
+) (uint64, error) {
+	entries, err := b.collectReceiptEntriesFromBlock(resBlock, blockRes, nil)
+	if err != nil {
+		return 0, err
+	}
+	if len(entries) == 0 {
+		return 0, nil
+	}
+	return entries[len(entries)-1].txResult.CumulativeGasUsed, nil
+}
+
 // GetLogsFromBlockResults returns the list of event logs from the tendermint block result response
 func GetLogsFromBlockResults(blockRes *tmrpctypes.ResultBlockResults) ([][]*ethtypes.Log, error) {
 	height, err := ethermint.SafeUint64(blockRes.Height)
