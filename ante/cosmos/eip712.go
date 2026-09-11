@@ -46,8 +46,8 @@ func init() {
 	ethermintCodec = codec.NewProtoCodec(registry)
 }
 
-// Deprecated: LegacyEip712SigVerificationDecorator Verify all signatures for a tx and return an error if any are invalid. Note,
-// the LegacyEip712SigVerificationDecorator decorator will not get executed on ReCheck.
+// Deprecated: LegacyEip712SigVerificationDecorator Verify all signatures for a tx and return an error if any are invalid.
+// RecheckTx still validates signers and account sequence, but skips signature recovery.
 // NOTE: As of v0.20.0, EIP-712 signature verification is handled by the ethsecp256k1 public key (see ethsecp256k1.go)
 //
 // CONTRACT: Pubkeys are set in context for all signers before this decorator runs
@@ -69,17 +69,12 @@ func NewLegacyEip712SigVerificationDecorator(
 }
 
 // AnteHandle handles validation of EIP712 signed cosmos txs.
-// it is not run on RecheckTx
+// RecheckTx validates signers and sequence, then skips signature recovery.
 func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 	tx sdk.Tx,
 	simulate bool,
 	next sdk.AnteHandler,
 ) (newCtx sdk.Context, err error) {
-	// no need to verify signatures on recheck tx
-	if ctx.IsReCheckTx() {
-		return next(ctx, tx, simulate)
-	}
-
 	sigTx, ok := tx.(authsigning.SigVerifiableTx)
 	if !ok {
 		return ctx, errorsmod.Wrapf(errortypes.ErrInvalidType, "tx %T doesn't implement authsigning.SigVerifiableTx", tx)
@@ -139,6 +134,10 @@ func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 		)
 	}
 
+	if simulate || ctx.IsReCheckTx() {
+		return next(ctx, tx, simulate)
+	}
+
 	// retrieve signer data
 	genesis := ctx.BlockHeight() == 0
 	chainID := ctx.ChainID()
@@ -152,10 +151,6 @@ func (svd LegacyEip712SigVerificationDecorator) AnteHandle(ctx sdk.Context,
 		ChainID:       chainID,
 		AccountNumber: accNum,
 		Sequence:      acc.GetSequence(),
-	}
-
-	if simulate {
-		return next(ctx, tx, simulate)
 	}
 
 	if err := VerifySignature(pubKey, signerData, sig.Data, svd.signModeHandler, authSignTx); err != nil {

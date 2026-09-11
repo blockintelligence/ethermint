@@ -9,6 +9,7 @@ import (
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	cosmosante "github.com/evmos/ethermint/ante/cosmos"
 	"github.com/evmos/ethermint/crypto/ethsecp256k1"
 	"github.com/evmos/ethermint/testutil"
 	utiltx "github.com/evmos/ethermint/testutil/tx"
@@ -287,4 +288,81 @@ func TestLegacyEIP712SameMsgType(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, delegation.Shares.Equal(expectedShares),
 		"expected delegation shares %s, got %s", expectedShares, delegation.Shares)
+}
+
+func TestLegacyEIP712ReCheckTxValidatesSequence(t *testing.T) {
+	app := testutil.Setup(false, nil)
+	ctx := app.BaseApp.NewUncachedContext(false, tmproto.Header{ChainID: testutil.ChainID})
+	app.FeeMarketKeeper.SetBaseFee(ctx, big.NewInt(1))
+
+	privKey, err := ethsecp256k1.GenerateKey()
+	require.NoError(t, err)
+	delegator := sdk.AccAddress(privKey.PubKey().Address().Bytes())
+
+	acc := app.AccountKeeper.NewAccountWithAddress(ctx, delegator)
+	require.NoError(t, acc.SetPubKey(privKey.PubKey()))
+	app.AccountKeeper.SetAccount(ctx, acc)
+
+	bondDenom, err := app.StakingKeeper.BondDenom(ctx)
+	require.NoError(t, err)
+	evmDenom := app.EvmKeeper.GetParams(ctx).EvmDenom
+	gas := uint64(500000)
+	delegationAmount := sdk.NewCoin(bondDenom, sdkmath.NewInt(100))
+	feeAmount := sdk.NewCoins(sdk.NewCoin(evmDenom, sdkmath.NewInt(100*int64(gas))))
+
+	require.NoError(t, testutil.FundAccount(
+		app.BankKeeper,
+		ctx,
+		delegator,
+		sdk.NewCoins(
+			sdk.NewCoin(bondDenom, delegationAmount.Amount.MulRaw(10)),
+			sdk.NewCoin(evmDenom, feeAmount.AmountOf(evmDenom).MulRaw(2)),
+		),
+	))
+
+	var valAddr sdk.ValAddress
+	err = app.StakingKeeper.IterateValidators(ctx, func(_ int64, val stakingtypes.ValidatorI) bool {
+		bz, err := app.StakingKeeper.ValidatorAddressCodec().StringToBytes(val.GetOperator())
+		require.NoError(t, err)
+		valAddr = sdk.ValAddress(bz)
+		return true
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, valAddr)
+
+	msgs := []sdk.Msg{
+		stakingtypes.NewMsgDelegate(delegator.String(), valAddr.String(), delegationAmount),
+	}
+	txArgs := utiltx.EIP712TxArgs{
+		CosmosTxArgs: utiltx.CosmosTxArgs{
+			TxCfg:   app.TxConfig(),
+			Priv:    privKey,
+			ChainID: testutil.ChainID,
+			Gas:     gas,
+			Fees:    feeAmount,
+			Msgs:    msgs,
+		},
+		UseLegacyExtension: true,
+		UseLegacyTypedData: true,
+	}
+
+	tx, err := utiltx.CreateEIP712CosmosTx(ctx, app, txArgs)
+	require.NoError(t, err)
+
+	decorator := cosmosante.NewLegacyEip712SigVerificationDecorator(app.AccountKeeper, app.TxConfig().SignModeHandler())
+	next := func(ctx sdk.Context, tx sdk.Tx, simulate bool) (sdk.Context, error) {
+		return ctx, nil
+	}
+	recheckCtx := ctx.WithIsReCheckTx(true)
+
+	_, err = decorator.AnteHandle(recheckCtx, tx, false, next)
+	require.NoError(t, err, "recheck should succeed when the account sequence still matches")
+
+	acc = app.AccountKeeper.GetAccount(ctx, delegator)
+	require.NoError(t, acc.SetSequence(acc.GetSequence()+1))
+	app.AccountKeeper.SetAccount(ctx, acc)
+
+	_, err = decorator.AnteHandle(recheckCtx, tx, false, next)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "account sequence mismatch")
 }
