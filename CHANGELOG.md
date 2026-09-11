@@ -50,6 +50,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Bug Fixes
 
+* (rpc) fix(rpc): fill blockNumber on logs decoded from tx events.
+
 * (rpc) fix(rpc): exclude Cosmos transaction gas from Ethereum block `gasUsed`.
 
 * (rpc) fix(rpc): propagate CometBFT fetch errors instead of returning JSON-RPC null.

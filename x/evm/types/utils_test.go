@@ -1,23 +1,22 @@
 package types_test
 
 import (
+	"encoding/json"
 	"errors"
 	"math/big"
 	"testing"
 
+	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	proto "github.com/cosmos/gogoproto/proto"
-	"github.com/evmos/ethermint/encoding"
-	evmtypes "github.com/evmos/ethermint/x/evm/types"
-
-	"github.com/evmos/ethermint/tests"
-
-	"github.com/stretchr/testify/require"
-
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/evmos/ethermint/encoding"
+	"github.com/evmos/ethermint/tests"
+	evmtypes "github.com/evmos/ethermint/x/evm/types"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEvmDataEncoding(t *testing.T) {
@@ -113,4 +112,27 @@ func TestTransactionLogsEncodeDecode(t *testing.T) {
 	txLogsEncodedDecoded, decodeErr := evmtypes.DecodeTransactionLogs(txLogsEncoded)
 	require.Nil(t, decodeErr)
 	require.Equal(t, txLogs, txLogsEncodedDecoded)
+}
+
+func TestDecodeTxLogsFromEventsFillsBlockNumber(t *testing.T) {
+	addr := tests.GenerateAddress()
+	logJSON, err := json.Marshal(&evmtypes.Log{
+		Address: addr.Hex(),
+		Topics:  []string{common.BytesToHash([]byte("topic")).Hex()},
+		Data:    []byte("data"),
+	})
+	require.NoError(t, err)
+
+	events := []abci.Event{{
+		Type: evmtypes.EventTypeTxLog,
+		Attributes: []abci.EventAttribute{{
+			Key:   evmtypes.AttributeKeyTxLog,
+			Value: string(logJSON),
+		}},
+	}}
+
+	logs, err := evmtypes.DecodeTxLogsFromEvents(nil, events, 17)
+	require.NoError(t, err)
+	require.Len(t, logs, 1)
+	require.Equal(t, uint64(17), logs[0].BlockNumber)
 }
