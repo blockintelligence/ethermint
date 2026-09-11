@@ -50,6 +50,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Bug Fixes
 
+* (rpc) fix(rpc): use per-message gas in eth_feeHistory instead of the whole Cosmos tx gas.
+
 * (feemarket) fix(feemarket): keep parent base fee when consensus MaxGas is 0 instead of dividing by zero.
 
 * (feemarket) fix(feemarket): apply legacy ParameterChangeProposal updates to the v4 module store.

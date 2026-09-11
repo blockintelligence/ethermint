@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 	rpc "github.com/evmos/ethermint/rpc/types"
 	"github.com/evmos/ethermint/tests"
@@ -761,4 +763,87 @@ func (suite *BackendTestSuite) TestProcessBlock() {
 	err := suite.backend.processBlock(tmBlock, &ethBlock, []float64{}, blockRes, &target)
 	suite.Require().NoError(err)
 	suite.Require().Equal(float64(gasUsed)/float64(gasLimit), target.GasUsedRatio)
+}
+
+func (suite *BackendTestSuite) TestProcessBlockUsesPerMessageGas() {
+	suite.SetupTest()
+
+	const height = int64(1)
+	lowTip := evmtypes.NewTx(
+		suite.backend.chainID,
+		0,
+		&common.Address{},
+		big.NewInt(0),
+		100000,
+		big.NewInt(1),
+		nil, nil, nil, nil,
+	)
+	highTip := evmtypes.NewTx(
+		suite.backend.chainID,
+		1,
+		&common.Address{},
+		big.NewInt(0),
+		100000,
+		big.NewInt(2),
+		nil, nil, nil, nil,
+	)
+	lowTip.From = suite.signerAddress
+	highTip.From = suite.signerAddress
+	signer := ethtypes.LatestSignerForChainID(suite.backend.chainID)
+	suite.Require().NoError(lowTip.Sign(signer, suite.signer))
+	suite.Require().NoError(highTip.Sign(signer, suite.signer))
+
+	builder := suite.backend.clientCtx.TxConfig.NewTxBuilder()
+	suite.Require().NoError(builder.SetMsgs(lowTip, highTip))
+	bz, err := suite.backend.clientCtx.TxConfig.TxEncoder()(builder.GetTx())
+	suite.Require().NoError(err)
+
+	gasLimit := hexutil.Uint64(8_000_000)
+	gasUsed := hexutil.Uint64(42_000)
+	ethBlock := map[string]interface{}{
+		"gasLimit":      gasLimit,
+		"gasUsed":       gasUsed,
+		"baseFeePerGas": (*hexutil.Big)(big.NewInt(0)),
+	}
+
+	tmBlock := &tmrpctypes.ResultBlock{
+		Block: tmtypes.MakeBlock(height, []tmtypes.Tx{bz}, nil, nil),
+	}
+	blockRes := &tmrpctypes.ResultBlockResults{
+		Height: height,
+		TxsResults: []*types.ExecTxResult{
+			{
+				GasUsed: 42_000,
+				Events: []types.Event{
+					{
+						Type: evmtypes.EventTypeEthereumTx,
+						Attributes: []types.EventAttribute{
+							{Key: evmtypes.AttributeKeyEthereumTxHash, Value: lowTip.Hash().Hex()},
+							{Key: evmtypes.AttributeKeyTxIndex, Value: "0"},
+							{Key: evmtypes.AttributeKeyTxGasUsed, Value: "21000"},
+						},
+					},
+					{
+						Type: evmtypes.EventTypeEthereumTx,
+						Attributes: []types.EventAttribute{
+							{Key: evmtypes.AttributeKeyEthereumTxHash, Value: highTip.Hash().Hex()},
+							{Key: evmtypes.AttributeKeyTxIndex, Value: "1"},
+							{Key: evmtypes.AttributeKeyTxGasUsed, Value: "21000"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	queryClient := suite.backend.queryClient.QueryClient.(*mocks.EVMQueryClient)
+	RegisterBaseFeeError(queryClient)
+	RegisterParamsWithoutHeader(queryClient, height)
+	fQueryClient := suite.backend.queryClient.FeeMarket.(*mocks.FeeMarketQueryClient)
+	RegisterFeeMarketParams(fQueryClient, height)
+
+	var target rpc.OneFeeHistory
+	err = suite.backend.processBlock(tmBlock, &ethBlock, []float64{75}, blockRes, &target)
+	suite.Require().NoError(err)
+	suite.Require().Equal(big.NewInt(2), target.Reward[0], "75th percentile should use per-message gas, not the summed cosmos tx gas")
 }
