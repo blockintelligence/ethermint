@@ -50,6 +50,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Bug Fixes
 
+* (feemarket) fix(feemarket): keep parent base fee when consensus MaxGas is 0 instead of dividing by zero.
+
 * (feemarket) fix(feemarket): apply legacy ParameterChangeProposal updates to the v4 module store.
 
 * (rpc) fix(rpc): fill blockNumber on logs decoded from tx events.
