@@ -478,7 +478,7 @@ func NewEthermintApp(
 	// register the proposal types
 	govRouter := govv1beta1.NewRouter()
 	govRouter.AddRoute(govtypes.RouterKey, govv1beta1.ProposalHandler).
-		AddRoute(paramproposal.RouterKey, params.NewParamChangeProposalHandler(app.ParamsKeeper))
+		AddRoute(paramproposal.RouterKey, NewFeeMarketAwareParamChangeHandler(app.ParamsKeeper, app.FeeMarketKeeper))
 	govConfig := govtypes.DefaultConfig()
 	/*
 		Example of setting gov params:
