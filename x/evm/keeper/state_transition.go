@@ -621,27 +621,23 @@ func (k *Keeper) ApplyMessageWithConfig(
 		}
 	}
 
-	// The dirty states in `StateDB` is either committed or discarded after return
+	// The dirty states in `StateDB` is either committed or discarded after return.
+	// Query paths pass commit=false; still detect native/EVM storage conflicts so
+	// eth_call and eth_estimateGas match committed execution.
+	if err := stateDB.DetectStateConflict(); err != nil {
+		if errors.Is(err, statedb.ErrStateConflict) {
+			return &types.EVMResult{
+				GasUsed:          gasUsed,
+				VmError:          statedb.ErrStateConflict.Error(),
+				Hash:             cfg.TxConfig.TxHash.Hex(),
+				BlockHash:        ctx.HeaderHash(),
+				ExecutionGasUsed: temporaryGasUsed,
+			}, nil
+		}
+		return nil, errorsmod.Wrap(err, "failed to detect stateDB conflict")
+	}
 	if commit {
 		if err := stateDB.Commit(); err != nil {
-			// A state conflict between the outer EVM and a nested native action is an
-			// EVM-level failure: surface it as a VmError so the transaction is included
-			// in the block with status=0 rather than rejected at the cosmos message level.
-			// All other commit errors (infrastructure failures) remain cosmos-level errors.
-			//
-			// Note: estimateGas and eth_call do not hit this path because commit is
-			// false for simulations, so they will succeed even when a real execution
-			// would produce a state conflict.
-			if errors.Is(err, statedb.ErrStateConflict) {
-				return &types.EVMResult{
-					GasUsed:          gasUsed,
-					VmError:          statedb.ErrStateConflict.Error(),
-					Hash:             cfg.TxConfig.TxHash.Hex(),
-					BlockHash:        ctx.HeaderHash(),
-					ExecutionGasUsed: temporaryGasUsed,
-				}, nil
-			}
-
 			return nil, errorsmod.Wrap(err, "failed to commit stateDB")
 		}
 	}

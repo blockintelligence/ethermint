@@ -1016,6 +1016,35 @@ func (suite *StateDBTestSuite) TestReentryAttack() {
 	suite.Require().Equal(initVal, finalVal)
 }
 
+func (suite *StateDBTestSuite) TestDetectStateConflictWithoutCommit() {
+	_, ctx, keeper := setupTestEnv(suite.T())
+
+	newContext, commit := ctx.CacheContext()
+
+	contract := common.BigToAddress(big.NewInt(998))
+	storageKey := common.BigToHash(big.NewInt(1))
+	initVal := common.BigToHash(big.NewInt(1000))
+
+	outerDB := statedb.New(newContext, keeper, emptyTxConfig)
+	outerDB.CreateAccount(contract)
+	outerDB.SetState(contract, storageKey, initVal)
+	suite.Require().NoError(outerDB.Commit())
+
+	outerDB = statedb.New(newContext, keeper, emptyTxConfig)
+	outerDB.SetState(contract, storageKey, common.BigToHash(big.NewInt(10)))
+	outerDB.ExecuteNativeAction(contract, nil, func(innerCtx sdk.Context) error {
+		innerDB := statedb.NewWithParams(innerCtx, keeper, emptyTxConfig, "uphoton")
+		innerDB.SetState(contract, storageKey, common.BigToHash(big.NewInt(1100)))
+		return innerDB.Commit()
+	})
+
+	err := outerDB.DetectStateConflict()
+	suite.Require().ErrorIs(err, statedb.ErrStateConflict)
+
+	commit()
+	suite.Require().Equal(initVal, keeper.GetState(ctx, contract, storageKey))
+}
+
 // TestNestedStateDBSameValueNoConflict verifies that Commit() succeeds when both
 // the outer EVM and an inner native action write the same value to the same storage key.
 // Even though both sides touched the slot, they agree on the final value, so there is
