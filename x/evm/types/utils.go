@@ -108,6 +108,7 @@ func DecodeMsgLogsFromEvents(in []byte, events []abci.Event, msgIndex int, block
 	if len(logs) == 0 {
 		logs, err = TxLogsFromEvents(events, msgIndex)
 	}
+	fillLogBlockMeta(logs, blockNumber)
 	return logs, err
 }
 
@@ -169,7 +170,21 @@ func DecodeTxLogsFromEvents(in []byte, events []abci.Event, blockNumber uint64) 
 			logs = append(logs, txLogs...)
 		}
 	}
+	fillLogBlockMeta(logs, blockNumber)
 	return logs, nil
+}
+
+// fillLogBlockMeta sets BlockNumber on logs that were decoded from events
+// without protobuf tx results (those omit block context).
+func fillLogBlockMeta(logs []*ethtypes.Log, blockNumber uint64) {
+	for _, l := range logs {
+		if l == nil {
+			continue
+		}
+		if l.BlockNumber == 0 {
+			l.BlockNumber = blockNumber
+		}
+	}
 }
 
 // EncodeTransactionLogs encodes TransactionLogs slice into a protobuf-encoded byte slice.
