@@ -50,6 +50,8 @@ Ref: https://keepachangelog.com/en/1.0.0/
 
 ### Bug Fixes
 
+* (rpc) fix(rpc): propagate CometBFT fetch errors instead of returning JSON-RPC null.
+
 * (evm) fix(evm): surface native/EVM state conflicts on eth_call and eth_estimateGas.
 
 * (evm) fix(evm): recompute tx bloom after post-tx hooks mutate logs.

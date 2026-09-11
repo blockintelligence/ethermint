@@ -477,7 +477,7 @@ func (e *PublicAPI) GetTransactionLogs(txHash common.Hash) ([]*ethtypes.Log, err
 	resBlockResult, err := e.backend.TendermintBlockResultByNumber(&res.Height)
 	if err != nil {
 		e.logger.Debug("block result not found", "number", res.Height, "error", err.Error())
-		return nil, nil
+		return nil, err
 	}
 	height, err := ethermint.SafeUint64(resBlockResult.Height)
 	if err != nil {
@@ -492,7 +492,7 @@ func (e *PublicAPI) GetTransactionLogs(txHash common.Hash) ([]*ethtypes.Log, err
 	)
 	if err != nil {
 		e.logger.Debug("failed to parse tx logs", "error", err.Error())
-		return nil, nil
+		return nil, err
 	}
 
 	return logs, nil

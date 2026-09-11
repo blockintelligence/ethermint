@@ -17,6 +17,7 @@ package backend
 
 import (
 	"bytes"
+	stderrors "errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -38,6 +39,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
+
+var errTendermintBlockNotFound = stderrors.New("tendermint block not found")
 
 // BlockNumber returns the current block number in abci app state. Because abci
 // app state could lag behind from tendermint latest block, it's more stable for
@@ -70,7 +73,10 @@ func (b *Backend) BlockNumber() (hexutil.Uint64, error) {
 func (b *Backend) GetBlockByNumber(blockNum rpctypes.BlockNumber, fullTx bool) (map[string]interface{}, error) {
 	resBlock, err := b.TendermintBlockByNumber(blockNum)
 	if err != nil {
-		return nil, nil
+		if stderrors.Is(err, errTendermintBlockNotFound) {
+			return nil, nil
+		}
+		return nil, err
 	}
 
 	// return if requested block height is greater than the current one
@@ -309,7 +315,7 @@ func (b *Backend) TendermintBlockByNumber(blockNum rpctypes.BlockNumber) (*tmrpc
 	}
 
 	if resBlock.Block == nil {
-		return nil, fmt.Errorf("tendermint block not found for height %d", height)
+		return nil, fmt.Errorf("%w for height %d", errTendermintBlockNotFound, height)
 	}
 
 	return resBlock, nil
